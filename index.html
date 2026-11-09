@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f7d32">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Cleaning Log – Weekly Sign-Off</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --green:#2f7d32; --green-d:#1f5e23; --green-l:#e7f3e4; --green-m:#b9dcb0;
+    --yellow:#fff4c2; --yellow-b:#e6c84a; --red:#c62828; --red-l:#fdecea;
+    --ink:#1d2a1e; --muted:#5f6f60; --line:#d5ded3; --bg:#f4f7f3; --card:#fff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit}
+  header{background:var(--green);color:#fff;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));
+    position:sticky;top:0;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .hrow{display:flex;align-items:center;gap:10px;max-width:1100px;margin:0 auto}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px;flex:1;font-weight:800}
+  header h1 small{display:block;font-weight:500;font-size:12px;opacity:.85;letter-spacing:.2px}
+  .iconbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;
+    padding:8px 11px;font-size:14px;font-weight:600;white-space:nowrap}
+  .iconbtn.on{background:#fff;color:var(--green-d)}
+  main{max-width:1100px;margin:0 auto;padding:12px 12px 90px}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  select.area{flex:1;min-width:160px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:700}
+  .weeknav{flex:1;justify-content:space-between;min-width:220px;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px}
+  .weeknav button{background:none;border:none;padding:6px 10px;font-size:18px;color:var(--green-d);border-radius:8px}
+  .weeknav button:active{background:var(--green-l)}
+  .weeknav span{font-weight:700;font-size:14px;min-width:150px;text-align:center}
+  .linkbtn{background:none;border:none;color:var(--green-d);font-weight:700;font-size:14px;padding:6px 4px;text-decoration:underline}
+
+  .now{background:var(--card);border:2px solid var(--yellow-b);border-radius:14px;padding:14px;margin-bottom:12px;
+    display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .now .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+  .now .big{font-size:22px;font-weight:800}
+  .now .sub{font-size:13px;color:var(--muted)}
+  .now .grow{flex:1;min-width:180px}
+  .now.done{border-color:var(--green-m);background:var(--green-l)}
+  .btn{border:none;border-radius:12px;padding:13px 18px;font-weight:800;font-size:16px}
+  .btn.primary{background:var(--green);color:#fff}
+  .btn.primary:active{background:var(--green-d)}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn.danger{background:var(--red);color:#fff}
+  .btn:disabled{opacity:.5}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .stat{min-width:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+  @media(max-width:520px){.stat{padding:7px 8px}.stat b{font-size:18px}.stat span{font-size:11px;line-height:1.2;display:block}}
+  .stat b{display:block;font-size:20px}
+  .stat span{font-size:12px;color:var(--muted)}
+  .stat.miss b{color:var(--red)}
+
+  .tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tab{flex:1;min-width:52px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 4px;text-align:center}
+  .tab b{display:block;font-size:14px}
+  .tab span{font-size:11px;color:var(--muted)}
+  .tab.today{border-color:var(--yellow-b)}
+  .tab.sel{background:var(--green);border-color:var(--green);color:#fff}
+  .tab.sel span{color:#e5f3e2}
+  .tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin-left:3px;vertical-align:middle}
+
+  .daylist{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .slot{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);min-height:62px;width:100%;
+    background:none;border-left:none;border-right:none;border-top:none;text-align:left}
+  .slot:last-child{border-bottom:none}
+  .slot .t{width:84px;font-weight:800;font-size:15px;flex-shrink:0}
+  .slot .t small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
+  .slot .who{flex:1;min-width:0}
+  .slot .who b{font-size:16px}
+  .slot .who .meta{font-size:12px;color:var(--muted)}
+  .pill{font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap}
+  .p-signed{background:var(--green-l);color:var(--green-d)}
+  .p-now{background:var(--yellow);color:#7a5d00;border:1px solid var(--yellow-b)}
+  .p-miss{background:var(--red-l);color:var(--red)}
+  .p-late{background:#fff0e0;color:#a24b00}
+  .p-up{background:#eef1ee;color:var(--muted)}
+  .slot.s-now{background:var(--yellow)}
+  .slot.s-miss{background:#fff8f7}
+  .slot.s-up{opacity:.6;cursor:default}
+  .check{background:var(--green-l);border-top:2px solid var(--green-m)}
+
+  /* week grid */
+  .gridwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid var(--line);border-radius:14px}
+  table.grid{border-collapse:collapse;width:100%;min-width:760px}
+  .grid th,.grid td{border:1px solid var(--line);padding:0;text-align:center;font-size:13px}
+  .grid thead th{background:var(--green);color:#fff;padding:6px 4px;font-weight:800}
+  .grid thead th small{display:block;font-weight:500;font-size:11px;opacity:.9}
+  .grid th.ts{background:var(--green-l);color:var(--ink);font-weight:800;width:84px;padding:4px}
+  .grid thead th.ts{background:var(--green-d);color:#fff}
+  .grid td button{all:unset;display:block;width:100%;min-height:46px;padding:4px 3px;cursor:pointer;box-sizing:border-box}
+  .grid td .nm{font-weight:700;font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;margin:0 auto}
+  .grid td .tm{font-size:10px;color:var(--muted)}
+  .grid td.c-now{background:var(--yellow);box-shadow:inset 0 0 0 2px var(--yellow-b)}
+  .grid td.c-miss{background:var(--red-l)}
+  .grid td.c-miss button::after{content:"missed";font-size:10px;color:var(--red);font-weight:700}
+  .grid td.c-up button{cursor:default}
+  .grid td.c-signed{background:#fbfefb}
+  .grid tr.chk td{background:var(--green-l)}
+  .grid tr.chk th{background:var(--green-m)}
+  .grid td.today-col.c-up,.grid td.today-col.c-signed{background:#fffdf2}
+
+  .banner{background:var(--red-l);color:var(--red);border:1px solid #f3b5ae;padding:10px 12px;border-radius:10px;margin-bottom:10px;font-size:14px;display:none}
+  .banner.show{display:block}
+  .muted{color:var(--muted)}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 2px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
+
+  /* modal */
+  .scrim{position:fixed;inset:0;background:rgba(10,25,12,.45);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .scrim.show{display:flex}
+  .sheet{background:#fff;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+    max-height:92vh;overflow:auto;animation:up .18s ease-out}
+  @media(min-width:640px){.scrim{align-items:center}.sheet{border-radius:18px}}
+  @keyframes up{from{transform:translateY(30px);opacity:.5}to{transform:none;opacity:1}}
+  .sheet h2{margin:0 0 4px;font-size:20px}
+  .sheet .ctx{color:var(--muted);font-size:14px;margin-bottom:14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:17px;background:#fff}
+  .field textarea{font-size:15px;min-height:64px;resize:vertical}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .note{background:#fff0e0;color:#7a3a00;border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  .kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:15px;margin-bottom:14px}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0;font-weight:600}
+  .arealist .ar{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+  .arealist .ar input{flex:2;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px}
+  .arealist .ar select{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px}
+  .arealist .ar button{flex-shrink:0;background:none;border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--red)}
+  .sect{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+  .sect h3{margin:0 0 10px;font-size:15px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;
+    font-weight:700;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  .loading{padding:40px;text-align:center;color:var(--muted)}
+
+  /* print sheet */
+  #print{display:none}
+  @media print{
+    @page{size:letter portrait;margin:.4in}
+    html,body{background:#fff!important}
+    header,main,.scrim,.toast{display:none!important}
+    #print{display:block;font-family:Arial,Helvetica,sans-serif;color:#000}
+    #print .ttl{background:#3a9b3a;color:#fff;text-align:center;font-weight:800;font-size:20px;padding:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #print .meta{display:flex;justify-content:space-between;font-size:13px;margin:8px 0}
+    #print table{border-collapse:collapse;width:99.5%;table-layout:fixed}
+    #print th,#print td{border:1px solid #444;font-size:11px;text-align:center;height:46px;padding:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #print thead th{background:#3a9b3a;color:#fff;height:auto;padding:4px}
+    #print th.ts{background:#c6e5bd;color:#000;width:76px}
+    #print td.miss{background:#fde3e0}
+    #print .nm{font-weight:700;font-size:12px}
+    #print .tm{font-size:9px;color:#333}
+    #print .foot{font-size:10px;color:#444;margin-top:6px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>Cleaning Checklist<small>Weekly Sign-Off</small></h1>
+    <button class="iconbtn" id="viewBtn">Week view</button>
+    <button class="iconbtn" id="mgrBtn">Manager</button>
+  </div>
+</header>
+
+<main>
+  <div class="banner" id="banner"></div>
+
+  <div class="bar">
+    <select class="area" id="areaSel" aria-label="Area"></select>
+    <div class="weeknav">
+      <button id="prevWk" aria-label="Previous week">‹</button>
+      <span id="wkLabel">—</span>
+      <button id="nextWk" aria-label="Next week">›</button>
+    </div>
+    <button class="linkbtn" id="thisWk" style="display:none">This week</button>
+  </div>
+
+  <div id="nowCard"></div>
+  <div class="stats" id="stats"></div>
+  <div id="body"><div class="loading">Loading…</div></div>
+  <div class="legend">
+    <span><i style="background:var(--yellow);border-color:var(--yellow-b)"></i>Now – sign this one</span>
+    <span><i style="background:var(--green-l)"></i>Signed</span>
+    <span><i style="background:var(--red-l)"></i>Missed</span>
+    <span><i style="background:#eef1ee"></i>Upcoming</span>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<div id="print"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, onSnapshot, setDoc, updateDoc, deleteField, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA0sE_Dkg0n_C5rOriPBXYOao4j8ibJiKM",
+  authDomain: "stewards-ebd5b.firebaseapp.com",
+  projectId: "stewards-ebd5b",
+  storageBucket: "stewards-ebd5b.firebasestorage.app",
+  messagingSenderId: "66145071370",
+  appId: "1:66145071370:web:6772be38896234442a8af3",
+  measurementId: "G-FJBRMWMJSX"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+
+/* ---------- constants & helpers ---------- */
+const SLOTS = 12, SLOT_MIN = 120;
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DAYS_LONG = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DEFAULT_AREAS = [{ id:"food-court", name:"Food Court", firstTime:540 }];
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()+n); return x; };
+const mondayOf = d => addDays(d, -((d.getDay()+6)%7));
+const mdY = d => `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+const md = d => `${d.getMonth()+1}/${d.getDate()}`;
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function fmtMin(m){ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mi=m%60; return `${(h%12)||12}:${pad(mi)} ${h<12?"AM":"PM"}`; }
+function fmtClock(ms){ const d=new Date(ms); return fmtMin(d.getHours()*60+d.getMinutes()); }
+function fmtStamp(ms){ const d=new Date(ms); return `${DAYS[(d.getDay()+6)%7]} ${md(d)} · ${fmtClock(ms)}`; }
+const slugify = s => s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "area";
+const store = {
+  get(k,def){ try{ const v=localStorage.getItem("cl_"+k); return v==null?def:JSON.parse(v);}catch{ return def; } },
+  set(k,v){ try{ localStorage.setItem("cl_"+k, JSON.stringify(v)); }catch{} }
+};
+async function sha(s){
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("cleaning-log:"+s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+
+/* Slot math. A "day" column runs from firstTime to firstTime+24h, so 1–7 AM belong to the previous column (like the paper sheet). */
+function slotStart(weekStart, day, slot, F){ const d=addDays(weekStart,day); return new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,F+slot*SLOT_MIN); }
+function opDate(now, F){ const mins=now.getHours()*60+now.getMinutes(); const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()); return mins<F?addDays(d,-1):d; }
+function position(now, F){
+  const od=opDate(now,F), ws=mondayOf(od), day=(od.getDay()+6)%7;
+  const s=Math.floor((now - slotStart(ws,day,0,F))/(SLOT_MIN*60000));
+  return { weekStart:ws, day, slot:Math.max(0,Math.min(SLOTS-1,s)) };
+}
+function slotState(ws, day, slot, F, signed, now){
+  if (signed) return "signed";
+  const st=slotStart(ws,day,slot,F), en=slotStart(ws,day,slot+1,F);
+  if (now >= en) return "miss";
+  if (now >= st) return "now";
+  return "up";
+}
+
+/* ---------- state ---------- */
+const S = {
+  config: null, areas: DEFAULT_AREAS, areaId: store.get("area","food-court"),
+  weekStart: null, viewDay: null, mode: store.get("mode", window.innerWidth>=900?"week":"day"),
+  log: null, manager: sessionStorage.getItem("cl_mgr")==="1", unsubLog: null, configLoaded:false
+};
+const area = () => S.areas.find(a=>a.id===S.areaId) || S.areas[0];
+const F = () => (S.log && Number.isFinite(S.log.firstTime)) ? S.log.firstTime : area().firstTime;
+const logId = () => `${area().id}_${ymd(S.weekStart)}`;
+const sigKey = (d,s) => `d${d}s${s}`;
+
+/* ---------- Firestore ---------- */
+const cfgRef = doc(db,"config","app");
+onSnapshot(cfgRef, snap => {
+  S.config = snap.exists() ? snap.data() : {};
+  S.areas = (S.config.areas && S.config.areas.length) ? S.config.areas : DEFAULT_AREAS;
+  if (!S.areas.find(a=>a.id===S.areaId)) S.areaId = S.areas[0].id;
+  const first = !S.configLoaded; S.configLoaded = true;
+  hideBanner();
+  renderAreaSel();
+  if (first) goThisWeek(); else subscribeLog();
+}, err => showBanner(dbErr(err)));
+
+function subscribeLog(){
+  if (S.unsubLog) S.unsubLog();
+  const id = logId(); S.log = null; render();
+  S.unsubLog = onSnapshot(doc(db,"logs",id), snap => {
+    if (logId()!==id) return;
+    S.log = snap.exists() ? snap.data() : { signs:{}, checks:{} };
+    S.log.signs ||= {}; S.log.checks ||= {};
+    hideBanner(); render();
+  }, err => showBanner(dbErr(err)));
+}
+function dbErr(err){
+  console.error(err);
+  if (err.code==="permission-denied") return "The database refused access. Check that the Firestore security rules from the README are published.";
+  return "Can't reach the database right now ("+(err.code||err.message)+"). Entries will retry when the connection is back.";
+}
+async function writeLog(patch){
+  const ref = doc(db,"logs",logId());
+  const base = { areaId:area().id, areaName:area().name, weekStart:ymd(S.weekStart), firstTime:F(), updatedAt:serverTimestamp() };
+  await setDoc(ref, { ...base, ...patch }, { merge:true });
+}
+
+/* ---------- navigation ---------- */
+function goThisWeek(){
+  const p = position(new Date(), area().firstTime);
+  S.weekStart = p.weekStart; S.viewDay = p.day; subscribeLog();
+}
+function shiftWeek(n){ S.weekStart = addDays(S.weekStart, 7*n); if (S.viewDay==null) S.viewDay=0; subscribeLog(); }
+$("#prevWk").onclick = () => shiftWeek(-1);
+$("#nextWk").onclick = () => shiftWeek(1);
+$("#thisWk").onclick = goThisWeek;
+$("#areaSel").onchange = e => { S.areaId=e.target.value; store.set("area",S.areaId); goThisWeek(); };
+$("#viewBtn").onclick = () => { S.mode = S.mode==="week"?"day":"week"; store.set("mode",S.mode); render(); };
+$("#mgrBtn").onclick = () => S.manager ? openManager() : openUnlock(openManager);
+
+function renderAreaSel(){
+  $("#areaSel").innerHTML = S.areas.map(a=>`<option value="${esc(a.id)}"${a.id===S.areaId?" selected":""}>${esc(a.name)}</option>`).join("");
+}
+
+/* ---------- render ---------- */
+function render(){
+  if (!S.weekStart) return;
+  const now = new Date(), ws = S.weekStart, f = F();
+  const cur = position(now, f);
+  const isThisWeek = ymd(cur.weekStart)===ymd(ws);
+  $("#wkLabel").textContent = `${md(ws)} – ${md(addDays(ws,6))}`;
+  $("#thisWk").style.display = isThisWeek ? "none" : "";
+  $("#viewBtn").textContent = S.mode==="week" ? "Day view" : "Week view";
+  $("#mgrBtn").classList.toggle("on", S.manager);
+  $("#mgrBtn").textContent = S.manager ? "Manager ✓" : "Manager";
+  if (!S.log){ $("#body").innerHTML = `<div class="loading">Loading…</div>`; $("#nowCard").innerHTML=""; $("#stats").innerHTML=""; return; }
+
+  // now card
+  if (isThisWeek){
+    const sig = S.log.signs[sigKey(cur.day,cur.slot)];
+    const label = `${fmtMin(f+cur.slot*SLOT_MIN)} slot`;
+    $("#nowCard").innerHTML = sig
+      ? `<div class="now done"><div class="grow"><div class="lbl">Current slot · ${DAYS_LONG[cur.day]}</div>
+           <div class="big">${label} ✓</div><div class="sub">Signed by <b>${esc(sig.by)}</b> at ${fmtClock(sig.at)}. Next slot starts ${fmtMin(f+(cur.slot+1)*SLOT_MIN)}.</div></div></div>`
+      : `<div class="now"><div class="grow"><div class="lbl">Due now · ${DAYS_LONG[cur.day]} · ${esc(area().name)}</div>
+           <div class="big">${label}</div><div class="sub">${fmtMin(f+cur.slot*SLOT_MIN)} – ${fmtMin(f+(cur.slot+1)*SLOT_MIN)}</div></div>
+           <button class="btn primary" id="signNow">Sign off now</button></div>`;
+    const b=$("#signNow"); if (b) b.onclick=()=>openSign(cur.day,cur.slot);
+  } else $("#nowCard").innerHTML = "";
+
+  // stats
+  let signed=0, missed=0, late=0;
+  for (let d=0; d<7; d++) for (let s=0; s<SLOTS; s++){
+    const sg=S.log.signs[sigKey(d,s)]; const st=slotState(ws,d,s,f,sg,now);
+    if (st==="signed"){ signed++; if (sg.late) late++; } else if (st==="miss") missed++;
+  }
+  const checked = Object.keys(S.log.checks).length;
+  $("#stats").innerHTML = `
+    <div class="stat"><b>${signed}<small class="muted" style="font-size:13px"> / ${7*SLOTS}</small></b><span>Slots signed</span></div>
+    <div class="stat miss"><b>${missed}</b><span>Missed</span></div>
+    <div class="stat"><b>${late}</b><span>Signed late</span></div>
+    <div class="stat"><b>${checked}<small class="muted" style="font-size:13px"> / 7</small></b><span>Days checked</span></div>`;
+
+  if (S.mode==="week") renderWeek(now, cur, isThisWeek); else renderDay(now, cur, isThisWeek);
+}
+
+function renderDay(now, cur, isThisWeek){
+  const ws=S.weekStart, f=F();
+  if (S.viewDay==null) S.viewDay = isThisWeek ? cur.day : 0;
+  const d = S.viewDay;
+  let tabs = `<div class="tabs">`;
+  for (let i=0;i<7;i++){
+    let anyMiss=false;
+    for (let s=0;s<SLOTS;s++) if (slotState(ws,i,s,f,S.log.signs[sigKey(i,s)],now)==="miss") anyMiss=true;
+    tabs += `<button class="tab${i===d?" sel":""}${isThisWeek&&i===cur.day?" today":""}" data-day="${i}"><b>${DAYS[i]}${anyMiss?'<i class="dot"></i>':""}</b><span>${md(addDays(ws,i))}</span></button>`;
+  }
+  tabs += `</div>`;
+  let list = `<div class="daylist">`;
+  for (let s=0;s<SLOTS;s++){
+    const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
+    const nextDay = (f+s*SLOT_MIN)>=1440;
+    const pill = st==="signed" ? (sg.late?`<span class="pill p-late">Late</span>`:`<span class="pill p-signed">Signed</span>`)
+               : st==="now" ? `<span class="pill p-now">Due now</span>` : st==="miss" ? `<span class="pill p-miss">Missed</span>` : `<span class="pill p-up">Upcoming</span>`;
+    const who = st==="signed"
+      ? `<b>${esc(sg.by)}</b><div class="meta">at ${fmtClock(sg.at)}${sg.note?" · "+esc(sg.note):""}</div>`
+      : st==="up" ? `<span class="muted">—</span>` : `<span class="muted">Tap to sign</span>`;
+    list += `<button class="slot s-${st}" data-d="${d}" data-s="${s}" ${st==="up"?"disabled":""}>
+      <div class="t">${fmtMin(f+s*SLOT_MIN)}${nextDay?`<small>${DAYS[(d+1)%7]} early</small>`:""}</div>
+      <div class="who">${who}</div>${pill}</button>`;
+  }
+  const ck = S.log.checks[`d${d}`];
+  list += `<button class="slot check" data-check="${d}"><div class="t">Checked by</div>
+    <div class="who">${ck?`<b>${esc(ck.by)}</b><div class="meta">${fmtStamp(ck.at)}</div>`:`<span class="muted">${S.manager?"Tap to verify this day":"Manager verifies the day"}</span>`}</div>
+    ${ck?`<span class="pill p-signed">Verified</span>`:""}</button></div>`;
+  $("#body").innerHTML = tabs + list;
+  $("#body").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ S.viewDay=+b.dataset.day; render(); });
+  bindCells();
+}
+
+function renderWeek(now, cur, isThisWeek){
+  const ws=S.weekStart, f=F();
+  let h = `<div class="gridwrap"><table class="grid"><thead><tr><th class="ts">Time slot</th>`;
+  for (let i=0;i<7;i++) h += `<th>${DAYS[i]}<small>${mdY(addDays(ws,i))}</small></th>`;
+  h += `</tr></thead><tbody>`;
+  for (let s=0;s<SLOTS;s++){
+    h += `<tr><th class="ts">${fmtMin(f+s*SLOT_MIN)}</th>`;
+    for (let d=0;d<7;d++){
+      const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
+      const inner = sg ? `<span class="nm">${esc(sg.by)}</span><span class="tm">${fmtClock(sg.at)}${sg.late?" · late":""}</span>` : (st==="now"?`<span class="tm" style="color:#7a5d00;font-weight:700">Sign now</span>`:"");
+      h += `<td class="c-${st}${isThisWeek&&d===cur.day?" today-col":""}"><button data-d="${d}" data-s="${s}" ${st==="up"?"disabled":""}>${inner}</button></td>`;
+    }
+    h += `</tr>`;
+  }
+  h += `<tr class="chk"><th class="ts">Checked by</th>`;
+  for (let d=0;d<7;d++){ const ck=S.log.checks[`d${d}`];
+    h += `<td><button data-check="${d}">${ck?`<span class="nm">${esc(ck.by)}</span><span class="tm">${md(new Date(ck.at))}</span>`:""}</button></td>`; }
+  h += `</tr></tbody></table></div>`;
+  $("#body").innerHTML = h;
+  bindCells();
+}
+
+function bindCells(){
+  $("#body").querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{
+    const d=+b.dataset.d, s=+b.dataset.s, sg=S.log.signs[sigKey(d,s)];
+    sg ? openDetail(d,s) : openSign(d,s);
+  });
+  $("#body").querySelectorAll("[data-check]").forEach(b=>b.onclick=()=>{
+    const d=+b.dataset.check;
+    S.manager ? openCheck(d) : openUnlock(()=>openCheck(d));
+  });
+}
+
+/* ---------- modals ---------- */
+function openSheet(html){ $("#sheet").innerHTML = html; $("#scrim").classList.add("show"); }
+function closeSheet(){ $("#scrim").classList.remove("show"); }
+$("#scrim").addEventListener("click", e=>{ if (e.target.id==="scrim") closeSheet(); });
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2200); }
+function showBanner(m){ const b=$("#banner"); b.textContent=m; b.classList.add("show"); }
+function hideBanner(){ $("#banner").classList.remove("show"); }
+
+function knownNames(){
+  const set = new Set(store.get("names",[]));
+  if (S.log) Object.values(S.log.signs).forEach(x=>x&&x.by&&set.add(x.by));
+  return [...set].slice(0,40);
+}
+function rememberName(n){ const a=store.get("names",[]).filter(x=>x.toLowerCase()!==n.toLowerCase()); a.unshift(n); store.set("names",a.slice(0,30)); store.set("me",n); }
+
+function slotCtx(d,s){
+  const f=F(), st=slotStart(S.weekStart,d,s,f);
+  return `${esc(area().name)} · ${DAYS_LONG[d]} ${md(addDays(S.weekStart,d))} · ${fmtMin(f+s*SLOT_MIN)} slot${(f+s*SLOT_MIN)>=1440?` (${DAYS[st.getDay()===0?6:st.getDay()-1]} ${md(st)} early morning)`:""}`;
+}
+
+function openSign(d,s){
+  const now=new Date(), st=slotState(S.weekStart,d,s,F(),null,now);
+  if (st==="up") return;
+  openSheet(`<h2>Sign off cleaning</h2><div class="ctx">${slotCtx(d,s)}</div>
+    ${st==="miss"?`<div class="note">This slot has already passed. It will be saved as a <b>late sign-off</b> with the actual time (${fmtClock(+now)}).</div>`:""}
+    <div class="field"><label for="nm">Your name or initials</label>
+      <input id="nm" list="names" autocomplete="off" autocapitalize="words" maxlength="40" value="${esc(store.get("me",""))}" placeholder="e.g. Linda">
+      <datalist id="names">${knownNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
+    <div class="field"><label for="nt">Note (optional)</label>
+      <textarea id="nt" maxlength="200" placeholder="Anything the next shift should know"></textarea></div>
+    <div class="row"><button class="btn ghost" id="cx">Cancel</button><button class="btn primary" id="ok">✓ Sign off</button></div>`);
+  const nm=$("#nm"); setTimeout(()=>{ if(!nm.value) nm.focus(); },50);
+  $("#cx").onclick=closeSheet;
+  $("#ok").onclick=async ()=>{
+    const by=nm.value.trim().replace(/\s+/g," ");
+    if (!by){ nm.focus(); nm.style.borderColor="var(--red)"; return; }
+    if (S.log.signs[sigKey(d,s)]){ closeSheet(); toast("Someone already signed this slot"); return; }
+    $("#ok").disabled=true;
+    const at=Date.now(), late = at >= +slotStart(S.weekStart,d,s+1,F());
+    const entry={ by, at, late }; const note=$("#nt").value.trim(); if (note) entry.note=note;
+    try{ await writeLog({ signs:{ [sigKey(d,s)]: entry } }); rememberName(by); closeSheet(); toast(`Signed off — thank you, ${by}!`); }
+    catch(e){ $("#ok").disabled=false; showBanner(dbErr(e)); }
+  };
+}
+
+function openDetail(d,s){
+  const sg=S.log.signs[sigKey(d,s)];
+  openSheet(`<h2>Signed off ✓</h2><div class="ctx">${slotCtx(d,s)}</div>
+    <dl class="kv"><dt>Signed by</dt><dd>${esc(sg.by)}</dd><dt>Time</dt><dd>${fmtStamp(sg.at)}${sg.late?' <span class="pill p-late">Late</span>':""}</dd>
+    ${sg.note?`<dt>Note</dt><dd>${esc(sg.note)}</dd>`:""}</dl>
+    <div class="row">${S.manager?`<button class="btn danger" id="rm">Remove</button>`:""}<button class="btn ghost" id="cx">Close</button></div>`);
+  $("#cx").onclick=closeSheet;
+  if (S.manager) $("#rm").onclick=async ()=>{
+    if (!confirm(`Remove ${sg.by}'s sign-off for this slot?`)) return;
+    try{ await updateDoc(doc(db,"logs",logId()), { [`signs.${sigKey(d,s)}`]: deleteField(), updatedAt:serverTimestamp() }); closeSheet(); toast("Sign-off removed"); }
+    catch(e){ showBanner(dbErr(e)); }
+  };
+}
+
+function openCheck(d){
+  const ck=S.log.checks[`d${d}`]; let missing=0; const now=new Date();
+  for (let s=0;s<SLOTS;s++) if (slotState(S.weekStart,d,s,F(),S.log.signs[sigKey(d,s)],now)==="miss") missing++;
+  openSheet(`<h2>Manager check · ${DAYS_LONG[d]}</h2><div class="ctx">${esc(area().name)} · ${mdY(addDays(S.weekStart,d))}</div>
+    ${missing?`<div class="note">${missing} slot${missing>1?"s":""} missed this day.</div>`:""}
+    ${ck?`<dl class="kv"><dt>Checked by</dt><dd>${esc(ck.by)}</dd><dt>When</dt><dd>${fmtStamp(ck.at)}</dd></dl>`:""}
+    <div class="field"><label for="cn">Manager name</label><input id="cn" maxlength="40" value="${esc(ck?ck.by:store.get("mgrName",""))}"></div>
+    <div class="row">${ck?`<button class="btn ghost" id="un">Clear</button>`:`<button class="btn ghost" id="cx">Cancel</button>`}<button class="btn primary" id="ok">✓ Verify day</button></div>`);
+  if ($("#cx")) $("#cx").onclick=closeSheet;
+  if ($("#un")) $("#un").onclick=async()=>{ try{ await updateDoc(doc(db,"logs",logId()),{[`checks.d${d}`]:deleteField(),updatedAt:serverTimestamp()}); closeSheet(); }catch(e){showBanner(dbErr(e));} };
+  $("#ok").onclick=async()=>{
+    const by=$("#cn").value.trim(); if(!by){ $("#cn").focus(); return; }
+    store.set("mgrName",by);
+    try{ await writeLog({ checks:{ [`d${d}`]:{ by, at:Date.now() } } }); closeSheet(); toast(`${DAYS_LONG[d]} verified`); }
+    catch(e){ showBanner(dbErr(e)); }
+  };
+}
+
+function openUnlock(then){
+  const hasPin = !!(S.config && S.config.pinHash);
+  openSheet(`<h2>${hasPin?"Manager access":"Set a manager passcode"}</h2>
+    <div class="ctx">${hasPin?"Enter the manager passcode to verify days, fix entries and change settings.":"No passcode has been set yet. Choose one now — managers will use it to unlock tools."}</div>
+    <div class="field"><label for="pc">Passcode</label><input id="pc" type="password" inputmode="numeric" autocomplete="off" maxlength="20"></div>
+    ${hasPin?"":`<div class="field"><label for="pc2">Confirm passcode</label><input id="pc2" type="password" inputmode="numeric" autocomplete="off" maxlength="20"></div>`}
+    <div class="row"><button class="btn ghost" id="cx">Cancel</button><button class="btn primary" id="ok">${hasPin?"Unlock":"Save passcode"}</button></div>`);
+  setTimeout(()=>$("#pc").focus(),50);
+  $("#cx").onclick=closeSheet;
+  const go = async ()=>{
+    const p=$("#pc").value.trim();
+    if (hasPin){
+      if (await sha(p)===S.config.pinHash){ S.manager=true; sessionStorage.setItem("cl_mgr","1"); closeSheet(); render(); then&&then(); }
+      else { $("#pc").value=""; $("#pc").style.borderColor="var(--red)"; toast("Wrong passcode"); }
+    } else {
+      if (p.length<4){ toast("Use at least 4 characters"); return; }
+      if (p!==$("#pc2").value.trim()){ toast("Passcodes don't match"); return; }
+      try{ await setDoc(cfgRef,{ areas:S.areas, pinHash:await sha(p), updatedAt:serverTimestamp() },{merge:true});
+        S.manager=true; sessionStorage.setItem("cl_mgr","1"); closeSheet(); render(); toast("Passcode saved"); then&&then(); }
+      catch(e){ showBanner(dbErr(e)); }
+    }
+  };
+  $("#ok").onclick=go; $("#pc").onkeydown=e=>{ if(e.key==="Enter") go(); };
+}
+
+function timeOptions(sel){ let o=""; for(let m=0;m<1440;m+=30) o+=`<option value="${m}"${m===sel?" selected":""}>${fmtMin(m)}</option>`; return o; }
+
+function openManager(){
+  const rows = S.areas.map((a,i)=>`<div class="ar" data-i="${i}"><input value="${esc(a.name)}" data-k="name" aria-label="Area name">
+    <select data-k="firstTime" aria-label="First time slot">${timeOptions(a.firstTime)}</select><button data-del="${i}" aria-label="Remove area">✕</button></div>`).join("");
+  openSheet(`<h2>Manager tools</h2><div class="ctx">${esc(area().name)} · week of ${mdY(S.weekStart)}</div>
+    <div class="row" style="flex-wrap:wrap"><button class="btn ghost" id="pr">🖨 Print week</button><button class="btn ghost" id="csv">⬇ Export CSV</button></div>
+    <div class="sect"><h3>Areas & first time slot</h3><div class="muted" style="font-size:13px;margin-bottom:10px">Slots run every 2 hours from the first time. A new first time applies from the next new week.</div>
+      <div class="arealist" id="al">${rows}</div>
+      <div class="row"><button class="btn ghost" id="add">+ Add area</button><button class="btn primary" id="sv">Save areas</button></div></div>
+    <div class="sect"><h3>Change passcode</h3><div class="row"><input id="np" type="password" inputmode="numeric" placeholder="New passcode" style="min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px">
+      <button class="btn ghost" id="cp">Update</button></div></div>
+    <div class="sect row"><button class="btn ghost" id="lk">Lock manager mode</button><button class="btn ghost" id="cx">Close</button></div>`);
+  const al=$("#al");
+  $("#cx").onclick=closeSheet;
+  $("#lk").onclick=()=>{ S.manager=false; sessionStorage.removeItem("cl_mgr"); closeSheet(); render(); toast("Manager mode locked"); };
+  $("#pr").onclick=()=>{ closeSheet(); printWeek(); };
+  $("#csv").onclick=exportCsv;
+  $("#add").onclick=()=>{ const div=document.createElement("div"); div.className="ar"; div.dataset.i="new";
+    div.innerHTML=`<input data-k="name" placeholder="Area name"><select data-k="firstTime">${timeOptions(540)}</select><button data-del="new">✕</button>`;
+    al.appendChild(div); div.querySelector("input").focus(); div.querySelector("button").onclick=()=>div.remove(); };
+  al.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if (al.children.length<=1) return toast("Keep at least one area"); b.parentElement.remove(); });
+  $("#sv").onclick=async()=>{
+    const used=new Set(), out=[];
+    for (const r of al.querySelectorAll(".ar")){
+      const name=r.querySelector('[data-k="name"]').value.trim(); if(!name) continue;
+      const ft=+r.querySelector('[data-k="firstTime"]').value;
+      const old = r.dataset.i!=="new" ? S.areas[+r.dataset.i] : null;
+      let id = old ? old.id : slugify(name); while(used.has(id)) id+="-2"; used.add(id);
+      out.push({ id, name, firstTime:ft });
+    }
+    if (!out.length) return toast("Add at least one area");
+    try{ await setDoc(cfgRef,{ areas:out, updatedAt:serverTimestamp() },{merge:true}); closeSheet(); toast("Areas saved"); }
+    catch(e){ showBanner(dbErr(e)); }
+  };
+  $("#cp").onclick=async()=>{ const p=$("#np").value.trim(); if(p.length<4) return toast("Use at least 4 characters");
+    try{ await setDoc(cfgRef,{ pinHash:await sha(p), updatedAt:serverTimestamp() },{merge:true}); $("#np").value=""; toast("Passcode updated"); }catch(e){ showBanner(dbErr(e)); } };
+}
+
+/* ---------- print & export ---------- */
+function printWeek(){
+  const ws=S.weekStart, f=F(), now=new Date();
+  let h=`<div class="ttl">CLEANING CHECKLIST – WEEKLY SIGN-OFF</div>
+    <div class="meta"><span><b>Week starting:</b> ${mdY(ws)}</span><span><b>Area:</b> ${esc(area().name)}</span><span><b>First time:</b> ${fmtMin(f)}</span></div>
+    <table><thead><tr><th class="ts">Time slot</th>${DAYS.map((d,i)=>`<th>${d}<br>${mdY(addDays(ws,i))}</th>`).join("")}</tr></thead><tbody>`;
+  for (let s=0;s<SLOTS;s++){
+    h+=`<tr><th class="ts">${fmtMin(f+s*SLOT_MIN)}</th>`;
+    for (let d=0;d<7;d++){ const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
+      h+= sg?`<td><div class="nm">${esc(sg.by)}</div><div class="tm">${fmtClock(sg.at)}${sg.late?" (late)":""}</div></td>`:`<td class="${st==="miss"?"miss":""}"></td>`; }
+    h+=`</tr>`;
+  }
+  h+=`<tr><th class="ts">Checked by</th>${[0,1,2,3,4,5,6].map(d=>{const c=S.log.checks[`d${d}`];return `<td>${c?`<div class="nm">${esc(c.by)}</div>`:""}</td>`}).join("")}</tr></tbody></table>
+    <div class="foot">Printed ${fmtStamp(Date.now())} from the digital Cleaning Log. Shaded cells = missed slot.</div>`;
+  $("#print").innerHTML=h; window.print();
+}
+function exportCsv(){
+  const ws=S.weekStart, f=F(), now=new Date();
+  const rows=[["Area","Week starting","Day","Date","Time slot","Status","Signed by","Signed at","Late","Note"]];
+  for (let d=0;d<7;d++) for (let s=0;s<SLOTS;s++){
+    const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
+    rows.push([area().name, mdY(ws), DAYS_LONG[d], mdY(addDays(ws,d)), fmtMin(f+s*SLOT_MIN),
+      {signed:"Signed",miss:"Missed",now:"Due now",up:"Upcoming"}[st], sg?.by||"", sg?new Date(sg.at).toLocaleString():"", sg?.late?"Yes":"", sg?.note||""]);
+  }
+  for (let d=0;d<7;d++){ const c=S.log.checks[`d${d}`]; rows.push([area().name, mdY(ws), DAYS_LONG[d], mdY(addDays(ws,d)), "Checked by", c?"Verified":"", c?.by||"", c?new Date(c.at).toLocaleString():"", "", ""]); }
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download=`Cleaning-Log_${area().id}_${ymd(ws)}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* keep "due now" fresh */
+setInterval(render, 30000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
+
+// expose pure helpers for tests
+window.__cl = { position, slotStart, slotState, fmtMin, opDate, mondayOf };
+</script>
+</body>
+</html>

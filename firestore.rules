@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // App settings: list of areas + manager passcode hash
+    match /config/app {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['areas', 'pinHash', 'updatedAt'])
+                   && (!('areas' in request.resource.data) || request.resource.data.areas is list);
+    }
+
+    // One document per area per week, e.g. logs/food-court_2026-11-09
+    match /logs/{logId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(
+                                 ['areaId', 'areaName', 'weekStart', 'firstTime', 'signs', 'checks', 'updatedAt'])
+                            && request.resource.data.size() <= 7;
+      allow delete: if false;
+    }
+
+    // Everything else is locked
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
