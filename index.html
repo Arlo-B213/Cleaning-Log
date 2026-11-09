@@ -106,6 +106,20 @@
   .grid tr.chk th{background:var(--green-m)}
   .grid td.today-col.c-up,.grid td.today-col.c-signed{background:#fffdf2}
 
+  .ovsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .ovgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .ov{background:#fff;border:1px solid var(--line);border-left:6px solid var(--green-m);border-radius:12px;padding:12px 14px;text-align:left;width:100%}
+  .ov.st-now{border-left-color:var(--yellow-b)}
+  .ov.st-miss{border-left-color:var(--red)}
+  .ov .nm{font-weight:800;font-size:17px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .ov .ln{font-size:13px;color:var(--muted);margin-top:4px}
+  .ov .ln b{color:var(--ink)}
+  .ov .bars{display:flex;gap:2px;margin-top:8px}
+  .ov .bars i{flex:1;height:8px;border-radius:2px;background:#eef1ee}
+  .ov .bars i.b-signed{background:var(--green)}
+  .ov .bars i.b-miss{background:var(--red)}
+  .ov .bars i.b-now{background:var(--yellow-b)}
+  .btn.sm{padding:10px 14px;font-size:14px;border-radius:10px}
   .banner{background:var(--red-l);color:var(--red);border:1px solid #f3b5ae;padding:10px 12px;border-radius:10px;margin-bottom:10px;font-size:14px;display:none}
   .banner.show{display:block}
   .muted{color:var(--muted)}
@@ -159,6 +173,13 @@
     #print .nm{font-weight:700;font-size:12px}
     #print .tm{font-size:9px;color:#333}
     #print .foot{font-size:10px;color:#444;margin-top:6px}
+    #print .qrpage{page-break-after:always;break-after:page;text-align:center;padding-top:.6in}
+    #print .qrpage:last-child{page-break-after:auto;break-after:auto}
+    #print .qrpage h1{font-size:44px;margin:0 0 6px}
+    #print .qrpage h2{font-size:22px;font-weight:600;margin:0 0 30px;color:#2f7d32}
+    #print .qrpage .qr svg{width:4.6in;height:4.6in}
+    #print .qrpage p{font-size:18px;margin:24px 0 4px}
+    #print .qrpage .url{font-size:11px;color:#555;word-break:break-all}
   }
 </style>
 </head>
@@ -182,12 +203,13 @@
       <button id="nextWk" aria-label="Next week">›</button>
     </div>
     <button class="linkbtn" id="thisWk" style="display:none">This week</button>
+    <button class="btn ghost sm" id="ovBtn">All areas</button>
   </div>
 
   <div id="nowCard"></div>
   <div class="stats" id="stats"></div>
   <div id="body"><div class="loading">Loading…</div></div>
-  <div class="legend">
+  <div class="legend" id="legend">
     <span><i style="background:var(--yellow);border-color:var(--yellow-b)"></i>Now – sign this one</span>
     <span><i style="background:var(--green-l)"></i>Signed</span>
     <span><i style="background:var(--red-l)"></i>Missed</span>
@@ -199,6 +221,7 @@
 <div class="toast" id="toast"></div>
 <div id="print"></div>
 
+<script src="qrcode.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, deleteField, serverTimestamp }
@@ -262,7 +285,7 @@ function slotState(ws, day, slot, F, signed, now){
 const S = {
   config: null, areas: DEFAULT_AREAS, areaId: store.get("area","food-court"),
   weekStart: null, viewDay: null, mode: store.get("mode", window.innerWidth>=900?"week":"day"),
-  log: null, manager: sessionStorage.getItem("cl_mgr")==="1", unsubLog: null, configLoaded:false
+  log: null, overview: false, manager: sessionStorage.getItem("cl_mgr")==="1", unsubLog: null, configLoaded:false
 };
 const area = () => S.areas.find(a=>a.id===S.areaId) || S.areas[0];
 const F = () => (S.log && Number.isFinite(S.log.firstTime)) ? S.log.firstTime : area().firstTime;
@@ -274,8 +297,11 @@ const cfgRef = doc(db,"config","app");
 onSnapshot(cfgRef, snap => {
   S.config = snap.exists() ? snap.data() : {};
   S.areas = (S.config.areas && S.config.areas.length) ? S.config.areas : DEFAULT_AREAS;
+  const first = !S.configLoaded;
+  if (first){ const q=new URLSearchParams(location.search).get("area"); if (q && S.areas.find(a=>a.id===q)){ S.areaId=q; store.set("area",q); } }
   if (!S.areas.find(a=>a.id===S.areaId)) S.areaId = S.areas[0].id;
-  const first = !S.configLoaded; S.configLoaded = true;
+  S.configLoaded = true;
+  if (S.overview) subscribeOverview();
   hideBanner();
   renderAreaSel();
   if (first) goThisWeek(); else subscribeLog();
@@ -311,7 +337,11 @@ function shiftWeek(n){ S.weekStart = addDays(S.weekStart, 7*n); if (S.viewDay==n
 $("#prevWk").onclick = () => shiftWeek(-1);
 $("#nextWk").onclick = () => shiftWeek(1);
 $("#thisWk").onclick = goThisWeek;
-$("#areaSel").onchange = e => { S.areaId=e.target.value; store.set("area",S.areaId); goThisWeek(); };
+function setArea(id){ S.areaId=id; store.set("area",id); S.overview=false; unsubOverview();
+  try{ history.replaceState(null,"","?area="+encodeURIComponent(id)); }catch{}
+  renderAreaSel(); goThisWeek(); }
+$("#areaSel").onchange = e => setArea(e.target.value);
+$("#ovBtn").onclick = () => { if (S.overview){ S.overview=false; unsubOverview(); } else { S.overview=true; subscribeOverview(); } render(); };
 $("#viewBtn").onclick = () => { S.mode = S.mode==="week"?"day":"week"; store.set("mode",S.mode); render(); };
 $("#mgrBtn").onclick = () => S.manager ? openManager() : openUnlock(openManager);
 
@@ -322,6 +352,12 @@ function renderAreaSel(){
 /* ---------- render ---------- */
 function render(){
   if (!S.weekStart) return;
+  const ov = S.overview;
+  $("#ovBtn").textContent = ov ? "← Back" : "All areas";
+  $("#ovBtn").classList.toggle("primary", ov); $("#ovBtn").classList.toggle("ghost", !ov);
+  for (const id of ["#areaSel",".weeknav","#legend","#viewBtn"]) $(id).style.display = ov ? "none" : "";
+  $("#mgrBtn").classList.toggle("on", S.manager); $("#mgrBtn").textContent = S.manager ? "Manager ✓" : "Manager";
+  if (ov){ $("#thisWk").style.display="none"; $("#nowCard").innerHTML=""; $("#stats").innerHTML=""; renderOverview(); return; }
   const now = new Date(), ws = S.weekStart, f = F();
   const cur = position(now, f);
   const isThisWeek = ymd(cur.weekStart)===ymd(ws);
@@ -425,6 +461,51 @@ function bindCells(){
     const d=+b.dataset.check;
     S.manager ? openCheck(d) : openUnlock(()=>openCheck(d));
   });
+}
+
+/* ---------- all-areas overview ---------- */
+const OV = { subs:{}, data:{} };
+function ovKey(a, now){ return `${a.id}_${ymd(position(now,a.firstTime).weekStart)}`; }
+function subscribeOverview(){
+  const now=new Date(), want=new Set(S.areas.map(a=>ovKey(a,now)));
+  for (const k of Object.keys(OV.subs)) if (!want.has(k)){ OV.subs[k](); delete OV.subs[k]; }
+  for (const k of want) if (!OV.subs[k]) OV.subs[k] = onSnapshot(doc(db,"logs",k), snap=>{
+    OV.data[k] = snap.exists()?snap.data():{}; if (S.overview) render();
+  }, err=>showBanner(dbErr(err)));
+}
+function unsubOverview(){ for (const k in OV.subs) OV.subs[k](); OV.subs={}; }
+function renderOverview(){
+  subscribeOverview();
+  const now=new Date(); let dueN=0, missN=0, okN=0, loading=false;
+  const cards = S.areas.map(a=>{
+    const k=ovKey(a,now), lg=OV.data[k]; if (!lg){ loading=true; return ""; }
+    const signs=lg.signs||{}, checks=lg.checks||{};
+    const f=Number.isFinite(lg.firstTime)?lg.firstTime:a.firstTime, p=position(now,f);
+    let todayMiss=0, weekMiss=0, todaySigned=0, bars="";
+    for (let d=0; d<=p.day; d++) for (let s=0;s<SLOTS;s++){
+      const st=slotState(p.weekStart,d,s,f,signs[sigKey(d,s)],now);
+      if (st==="miss"){ weekMiss++; if (d===p.day) todayMiss++; }
+      if (d===p.day){ if (st==="signed") todaySigned++; bars+=`<i class="b-${st}"></i>`; }
+    }
+    const cur=signs[sigKey(p.day,p.slot)];
+    const cls = todayMiss ? "st-miss" : (!cur ? "st-now" : "");
+    if (todayMiss) missN++; else if (!cur) dueN++; else okN++;
+    const pill = cur ? `<span class="pill p-signed">✓ ${fmtMin(f+p.slot*SLOT_MIN)}</span>` : `<span class="pill p-now">Due ${fmtMin(f+p.slot*SLOT_MIN)}</span>`;
+    const yd = p.day>0 ? p.day-1 : null;
+    return `<button class="ov ${cls}" data-area="${esc(a.id)}"><div class="nm">${esc(a.name)} ${pill}</div>
+      <div class="ln">${cur?`Signed by <b>${esc(cur.by)}</b> at ${fmtClock(cur.at)}`:"Current slot not signed yet"}</div>
+      <div class="bars" title="Today's slots">${bars}</div>
+      <div class="ln">Today: <b>${todaySigned}</b> signed · <b style="color:${todayMiss?"var(--red)":"inherit"}">${todayMiss}</b> missed · Week missed: <b>${weekMiss}</b>
+      ${yd!=null?` · ${DAYS[yd]} ${checks["d"+yd]?"verified ✓":"<b style='color:var(--red)'>not verified</b>"}`:""}</div></button>`;
+  });
+  $("#body").innerHTML = `
+    <div class="ovsum">
+      <div class="stat"><b>${okN}</b><span>On track</span></div>
+      <div class="stat"><b style="color:#9a7400">${dueN}</b><span>Due now</span></div>
+      <div class="stat miss"><b>${missN}</b><span>Missed today</span></div>
+    </div>
+    <div class="ovgrid">${cards.join("")}</div>${loading?`<div class="loading">Loading…</div>`:""}`;
+  $("#body").querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>setArea(b.dataset.area));
 }
 
 /* ---------- modals ---------- */
@@ -536,6 +617,7 @@ function openManager(){
     <select data-k="firstTime" aria-label="First time slot">${timeOptions(a.firstTime)}</select><button data-del="${i}" aria-label="Remove area">✕</button></div>`).join("");
   openSheet(`<h2>Manager tools</h2><div class="ctx">${esc(area().name)} · week of ${mdY(S.weekStart)}</div>
     <div class="row" style="flex-wrap:wrap"><button class="btn ghost" id="pr">🖨 Print week</button><button class="btn ghost" id="csv">⬇ Export CSV</button></div>
+    <button class="btn ghost" id="qr" style="width:100%;margin-top:8px">▦ Print QR code posters (one per area)</button>
     <div class="sect"><h3>Areas & first time slot</h3><div class="muted" style="font-size:13px;margin-bottom:10px">Slots run every 2 hours from the first time. A new first time applies from the next new week.</div>
       <div class="arealist" id="al">${rows}</div>
       <div class="row"><button class="btn ghost" id="add">+ Add area</button><button class="btn primary" id="sv">Save areas</button></div></div>
@@ -547,6 +629,7 @@ function openManager(){
   $("#lk").onclick=()=>{ S.manager=false; sessionStorage.removeItem("cl_mgr"); closeSheet(); render(); toast("Manager mode locked"); };
   $("#pr").onclick=()=>{ closeSheet(); printWeek(); };
   $("#csv").onclick=exportCsv;
+  $("#qr").onclick=()=>{ closeSheet(); printQr(); };
   $("#add").onclick=()=>{ const div=document.createElement("div"); div.className="ar"; div.dataset.i="new";
     div.innerHTML=`<input data-k="name" placeholder="Area name"><select data-k="firstTime">${timeOptions(540)}</select><button data-del="new">✕</button>`;
     al.appendChild(div); div.querySelector("input").focus(); div.querySelector("button").onclick=()=>div.remove(); };
@@ -583,6 +666,18 @@ function printWeek(){
   h+=`<tr><th class="ts">Checked by</th>${[0,1,2,3,4,5,6].map(d=>{const c=S.log.checks[`d${d}`];return `<td>${c?`<div class="nm">${esc(c.by)}</div>`:""}</td>`}).join("")}</tr></tbody></table>
     <div class="foot">Printed ${fmtStamp(Date.now())} from the digital Cleaning Log. Shaded cells = missed slot.</div>`;
   $("#print").innerHTML=h; window.print();
+}
+function printQr(){
+  if (typeof qrcode!=="function") return toast("QR library didn't load");
+  const base = location.origin + location.pathname;
+  $("#print").innerHTML = S.areas.map(a=>{
+    const url = `${base}?area=${encodeURIComponent(a.id)}`;
+    const q = qrcode(0,"M"); q.addData(url); q.make();
+    return `<div class="qrpage"><h1>${esc(a.name)}</h1><h2>Cleaning Checklist – Sign-Off</h2>
+      <div class="qr">${q.createSvgTag({cellSize:8, margin:2, scalable:true})}</div>
+      <p>Scan with your phone camera to sign off your cleaning slot.</p><div class="url">${esc(url)}</div></div>`;
+  }).join("");
+  window.print();
 }
 function exportCsv(){
   const ws=S.weekStart, f=F(), now=new Date();

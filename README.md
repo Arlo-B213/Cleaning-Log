@@ -1,6 +1,6 @@
 # Cleaning Log – Weekly Sign-Off
 
-Digital version of the paper **Cleaning Checklist – Weekly Sign-Off** sheet. Team members sign off each 2-hour cleaning slot from their phones; managers verify each day and print/export the week.
+Digital version of the paper **Cleaning Checklist – Weekly Sign-Off** sheet, for any number of areas (food court, Cantina, restaurants, etc.). Team members sign off each 2-hour cleaning slot from their phones; managers verify each day and print/export the week.
 
 **Live app:** https://arlo-b213.github.io/cleaning-log/
 
@@ -13,6 +13,10 @@ Digital version of the paper **Cleaning Checklist – Weekly Sign-Off** sheet. T
 | Sign or initial the box | Tap **Sign off now** (or any open slot), enter name/initials. Time is stamped automatically. Past slots are saved as **late** with the real time. |
 | Blank boxes | Shown in red as **Missed** once the slot has passed. |
 | Checked by | Manager taps the Checked by row to verify the day (passcode required). |
+
+**Multiple areas**
+- **All areas** button: one screen with every area's current slot, today's progress bar, missed slots and whether yesterday was verified. Red = missed slots today, yellow = current slot due, green = on track. Tap an area to open its log.
+- **QR posters**: Manager → *Print QR code posters* prints one page per area. Post each one in its area; scanning it opens the app straight to that area's log (link format `…/cleaning-log/?area=agave`). The phone also remembers the last area used.
 
 **Manager tools** (Manager button → passcode): print the week on a sheet that matches the paper form, export CSV, remove a wrong sign-off, add/rename areas and set each area's first time slot, change the passcode. The first manager to open the tools sets the passcode.
 
@@ -36,4 +40,5 @@ Like the other team apps, this uses a shared manager passcode checked in the bro
 
 - `index.html` – the whole app (no build step; Firebase loaded from the CDN)
 - `firestore.rules` – database rules to paste into the console
+- `qrcode.js` – QR code generator (MIT, Kazuhiko Arase)
 - `manifest.json`, `icon.svg` – lets phones "Add to Home Screen" as an app
