@@ -27,6 +27,8 @@
   .iconbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;
     padding:8px 11px;font-size:14px;font-weight:600;white-space:nowrap}
   .iconbtn.on{background:#fff;color:var(--green-d)}
+  select.iconbtn{padding:8px 6px;font-weight:700}
+  select.iconbtn option{color:#1d2a1e}
   main{max-width:1100px;margin:0 auto;padding:12px 12px 90px}
   .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
   select.area{flex:1;min-width:160px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:700}
@@ -99,7 +101,7 @@
   .grid td .tm{font-size:10px;color:var(--muted)}
   .grid td.c-now{background:var(--yellow);box-shadow:inset 0 0 0 2px var(--yellow-b)}
   .grid td.c-miss{background:var(--red-l)}
-  .grid td.c-miss button::after{content:"missed";font-size:10px;color:var(--red);font-weight:700}
+  .grid td.c-miss button::after{content:attr(data-m);font-size:10px;color:var(--red);font-weight:700}
   .grid td.c-up button{cursor:default}
   .grid td.c-signed{background:#fbfefb}
   .grid tr.chk td{background:var(--green-l)}
@@ -186,7 +188,12 @@
 <body>
 <header>
   <div class="hrow">
-    <h1>Cleaning Checklist<small>Weekly Sign-Off</small></h1>
+    <h1><span data-t="title">Cleaning Checklist</span><small data-t="subtitle">Weekly Sign-Off</small></h1>
+    <select class="iconbtn" id="langSel" aria-label="Language">
+      <option value="en">EN</option>
+      <option value="es">ES</option>
+      <option value="tl">TL</option>
+    </select>
     <button class="iconbtn" id="viewBtn">Week view</button>
     <button class="iconbtn" id="mgrBtn">Manager</button>
   </div>
@@ -196,24 +203,24 @@
   <div class="banner" id="banner"></div>
 
   <div class="bar">
-    <select class="area" id="areaSel" aria-label="Area"></select>
+    <select class="area" id="areaSel" data-ta="areaLabel" aria-label="Area"></select>
     <div class="weeknav">
-      <button id="prevWk" aria-label="Previous week">‹</button>
+      <button id="prevWk" data-ta="prevWeek" aria-label="Previous week">‹</button>
       <span id="wkLabel">—</span>
-      <button id="nextWk" aria-label="Next week">›</button>
+      <button id="nextWk" data-ta="nextWeek" aria-label="Next week">›</button>
     </div>
-    <button class="linkbtn" id="thisWk" style="display:none">This week</button>
-    <button class="btn ghost sm" id="ovBtn">All areas</button>
+    <button class="linkbtn" id="thisWk" data-t="thisWeek" style="display:none">This week</button>
+    <button class="btn ghost sm" id="ovBtn" data-t="allAreas">All areas</button>
   </div>
 
   <div id="nowCard"></div>
   <div class="stats" id="stats"></div>
-  <div id="body"><div class="loading">Loading…</div></div>
+  <div id="body"><div class="loading" data-t="loading">Loading…</div></div>
   <div class="legend" id="legend">
-    <span><i style="background:var(--yellow);border-color:var(--yellow-b)"></i>Now – sign this one</span>
-    <span><i style="background:var(--green-l)"></i>Signed</span>
-    <span><i style="background:var(--red-l)"></i>Missed</span>
-    <span><i style="background:#eef1ee"></i>Upcoming</span>
+    <span><i style="background:var(--yellow);border-color:var(--yellow-b)"></i><span data-t="legendNow">Now – sign this one</span></span>
+    <span><i style="background:var(--green-l)"></i><span data-t="legendSigned">Signed</span></span>
+    <span><i style="background:var(--red-l)"></i><span data-t="legendMissed">Missed</span></span>
+    <span><i style="background:#eef1ee"></i><span data-t="legendUp">Upcoming</span></span>
   </div>
 </main>
 
@@ -222,6 +229,7 @@
 <div id="print"></div>
 
 <script src="qrcode.js"></script>
+<script src="lang.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, onSnapshot, setDoc, updateDoc, deleteField, serverTimestamp }
@@ -240,9 +248,8 @@ const db = getFirestore(initializeApp(firebaseConfig));
 
 /* ---------- constants & helpers ---------- */
 const SLOTS = 12, SLOT_MIN = 120;
-const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-const DAYS_LONG = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const DEFAULT_AREAS = [{ id:"food-court", name:"Food Court", firstTime:540 }];
+const EN_DAYS_LONG = CL_STR.en.daysLong; // manager screens stay in English
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2,"0");
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -254,7 +261,7 @@ const md = d => `${d.getMonth()+1}/${d.getDate()}`;
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function fmtMin(m){ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mi=m%60; return `${(h%12)||12}:${pad(mi)} ${h<12?"AM":"PM"}`; }
 function fmtClock(ms){ const d=new Date(ms); return fmtMin(d.getHours()*60+d.getMinutes()); }
-function fmtStamp(ms){ const d=new Date(ms); return `${DAYS[(d.getDay()+6)%7]} ${md(d)} · ${fmtClock(ms)}`; }
+function fmtStamp(ms){ const d=new Date(ms); return `${dayName((d.getDay()+6)%7)} ${md(d)} · ${fmtClock(ms)}`; }
 const slugify = s => s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "area";
 const store = {
   get(k,def){ try{ const v=localStorage.getItem("cl_"+k); return v==null?def:JSON.parse(v);}catch{ return def; } },
@@ -319,8 +326,8 @@ function subscribeLog(){
 }
 function dbErr(err){
   console.error(err);
-  if (err.code==="permission-denied") return "The database refused access. Check that the Firestore security rules from the README are published.";
-  return "Can't reach the database right now ("+(err.code||err.message)+"). Entries will retry when the connection is back.";
+  if (err.code==="permission-denied") return t("dbDenied");
+  return t("dbDown", { code: err.code||err.message });
 }
 async function writeLog(patch){
   const ref = doc(db,"logs",logId());
@@ -344,6 +351,7 @@ $("#areaSel").onchange = e => setArea(e.target.value);
 $("#ovBtn").onclick = () => { if (S.overview){ S.overview=false; unsubOverview(); } else { S.overview=true; subscribeOverview(); } render(); };
 $("#viewBtn").onclick = () => { S.mode = S.mode==="week"?"day":"week"; store.set("mode",S.mode); render(); };
 $("#mgrBtn").onclick = () => S.manager ? openManager() : openUnlock(openManager);
+$("#langSel").onchange = e => { setLang(e.target.value); render(); };
 
 function renderAreaSel(){
   $("#areaSel").innerHTML = S.areas.map(a=>`<option value="${esc(a.id)}"${a.id===S.areaId?" selected":""}>${esc(a.name)}</option>`).join("");
@@ -353,7 +361,7 @@ function renderAreaSel(){
 function render(){
   if (!S.weekStart) return;
   const ov = S.overview;
-  $("#ovBtn").textContent = ov ? "← Back" : "All areas";
+  $("#ovBtn").textContent = ov ? t("back") : t("allAreas");
   $("#ovBtn").classList.toggle("primary", ov); $("#ovBtn").classList.toggle("ghost", !ov);
   for (const id of ["#areaSel",".weeknav","#legend","#viewBtn"]) $(id).style.display = ov ? "none" : "";
   $("#mgrBtn").classList.toggle("on", S.manager); $("#mgrBtn").textContent = S.manager ? "Manager ✓" : "Manager";
@@ -363,21 +371,19 @@ function render(){
   const isThisWeek = ymd(cur.weekStart)===ymd(ws);
   $("#wkLabel").textContent = `${md(ws)} – ${md(addDays(ws,6))}`;
   $("#thisWk").style.display = isThisWeek ? "none" : "";
-  $("#viewBtn").textContent = S.mode==="week" ? "Day view" : "Week view";
-  $("#mgrBtn").classList.toggle("on", S.manager);
-  $("#mgrBtn").textContent = S.manager ? "Manager ✓" : "Manager";
-  if (!S.log){ $("#body").innerHTML = `<div class="loading">Loading…</div>`; $("#nowCard").innerHTML=""; $("#stats").innerHTML=""; return; }
+  $("#viewBtn").textContent = S.mode==="week" ? t("viewDay") : t("viewWeek");
+  if (!S.log){ $("#body").innerHTML = `<div class="loading">${t("loading")}</div>`; $("#nowCard").innerHTML=""; $("#stats").innerHTML=""; return; }
 
   // now card
   if (isThisWeek){
     const sig = S.log.signs[sigKey(cur.day,cur.slot)];
-    const label = `${fmtMin(f+cur.slot*SLOT_MIN)} slot`;
+    const label = `${fmtMin(f+cur.slot*SLOT_MIN)} ${t("slot")}`;
     $("#nowCard").innerHTML = sig
-      ? `<div class="now done"><div class="grow"><div class="lbl">Current slot · ${DAYS_LONG[cur.day]}</div>
-           <div class="big">${label} ✓</div><div class="sub">Signed by <b>${esc(sig.by)}</b> at ${fmtClock(sig.at)}. Next slot starts ${fmtMin(f+(cur.slot+1)*SLOT_MIN)}.</div></div></div>`
-      : `<div class="now"><div class="grow"><div class="lbl">Due now · ${DAYS_LONG[cur.day]} · ${esc(area().name)}</div>
+      ? `<div class="now done"><div class="grow"><div class="lbl">${t("currentSlot",{day:dayLong(cur.day)})}</div>
+           <div class="big">${label} ✓</div><div class="sub">${t("signedNow",{by:esc(sig.by), time:fmtClock(sig.at), next:fmtMin(f+(cur.slot+1)*SLOT_MIN)})}</div></div></div>`
+      : `<div class="now"><div class="grow"><div class="lbl">${t("dueLabel",{day:dayLong(cur.day), area:esc(area().name)})}</div>
            <div class="big">${label}</div><div class="sub">${fmtMin(f+cur.slot*SLOT_MIN)} – ${fmtMin(f+(cur.slot+1)*SLOT_MIN)}</div></div>
-           <button class="btn primary" id="signNow">Sign off now</button></div>`;
+           <button class="btn primary" id="signNow">${t("signNow")}</button></div>`;
     const b=$("#signNow"); if (b) b.onclick=()=>openSign(cur.day,cur.slot);
   } else $("#nowCard").innerHTML = "";
 
@@ -389,10 +395,10 @@ function render(){
   }
   const checked = Object.keys(S.log.checks).length;
   $("#stats").innerHTML = `
-    <div class="stat"><b>${signed}<small class="muted" style="font-size:13px"> / ${7*SLOTS}</small></b><span>Slots signed</span></div>
-    <div class="stat miss"><b>${missed}</b><span>Missed</span></div>
-    <div class="stat"><b>${late}</b><span>Signed late</span></div>
-    <div class="stat"><b>${checked}<small class="muted" style="font-size:13px"> / 7</small></b><span>Days checked</span></div>`;
+    <div class="stat"><b>${signed}<small class="muted" style="font-size:13px"> / ${7*SLOTS}</small></b><span>${t("statSigned")}</span></div>
+    <div class="stat miss"><b>${missed}</b><span>${t("statMissed")}</span></div>
+    <div class="stat"><b>${late}</b><span>${t("statLate")}</span></div>
+    <div class="stat"><b>${checked}<small class="muted" style="font-size:13px"> / 7</small></b><span>${t("statChecked")}</span></div>`;
 
   if (S.mode==="week") renderWeek(now, cur, isThisWeek); else renderDay(now, cur, isThisWeek);
 }
@@ -405,26 +411,26 @@ function renderDay(now, cur, isThisWeek){
   for (let i=0;i<7;i++){
     let anyMiss=false;
     for (let s=0;s<SLOTS;s++) if (slotState(ws,i,s,f,S.log.signs[sigKey(i,s)],now)==="miss") anyMiss=true;
-    tabs += `<button class="tab${i===d?" sel":""}${isThisWeek&&i===cur.day?" today":""}" data-day="${i}"><b>${DAYS[i]}${anyMiss?'<i class="dot"></i>':""}</b><span>${md(addDays(ws,i))}</span></button>`;
+    tabs += `<button class="tab${i===d?" sel":""}${isThisWeek&&i===cur.day?" today":""}" data-day="${i}"><b>${dayName(i)}${anyMiss?'<i class="dot"></i>':""}</b><span>${md(addDays(ws,i))}</span></button>`;
   }
   tabs += `</div>`;
   let list = `<div class="daylist">`;
   for (let s=0;s<SLOTS;s++){
     const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
     const nextDay = (f+s*SLOT_MIN)>=1440;
-    const pill = st==="signed" ? (sg.late?`<span class="pill p-late">Late</span>`:`<span class="pill p-signed">Signed</span>`)
-               : st==="now" ? `<span class="pill p-now">Due now</span>` : st==="miss" ? `<span class="pill p-miss">Missed</span>` : `<span class="pill p-up">Upcoming</span>`;
+    const pill = st==="signed" ? (sg.late?`<span class="pill p-late">${t("pLate")}</span>`:`<span class="pill p-signed">${t("pSigned")}</span>`)
+               : st==="now" ? `<span class="pill p-now">${t("pNow")}</span>` : st==="miss" ? `<span class="pill p-miss">${t("pMiss")}</span>` : `<span class="pill p-up">${t("pUp")}</span>`;
     const who = st==="signed"
-      ? `<b>${esc(sg.by)}</b><div class="meta">at ${fmtClock(sg.at)}${sg.note?" · "+esc(sg.note):""}</div>`
-      : st==="up" ? `<span class="muted">—</span>` : `<span class="muted">Tap to sign</span>`;
+      ? `<b>${esc(sg.by)}</b><div class="meta">${t("at",{time:fmtClock(sg.at)})}${sg.note?" · "+esc(sg.note):""}</div>`
+      : st==="up" ? `<span class="muted">—</span>` : `<span class="muted">${t("tapSign")}</span>`;
     list += `<button class="slot s-${st}" data-d="${d}" data-s="${s}" ${st==="up"?"disabled":""}>
-      <div class="t">${fmtMin(f+s*SLOT_MIN)}${nextDay?`<small>${DAYS[(d+1)%7]} early</small>`:""}</div>
+      <div class="t">${fmtMin(f+s*SLOT_MIN)}${nextDay?`<small>${t("early",{day:dayName((d+1)%7)})}</small>`:""}</div>
       <div class="who">${who}</div>${pill}</button>`;
   }
   const ck = S.log.checks[`d${d}`];
-  list += `<button class="slot check" data-check="${d}"><div class="t">Checked by</div>
-    <div class="who">${ck?`<b>${esc(ck.by)}</b><div class="meta">${fmtStamp(ck.at)}</div>`:`<span class="muted">${S.manager?"Tap to verify this day":"Manager verifies the day"}</span>`}</div>
-    ${ck?`<span class="pill p-signed">Verified</span>`:""}</button></div>`;
+  list += `<button class="slot check" data-check="${d}"><div class="t">${t("checkedBy")}</div>
+    <div class="who">${ck?`<b>${esc(ck.by)}</b><div class="meta">${fmtStamp(ck.at)}</div>`:`<span class="muted">${S.manager?t("tapVerify"):t("managerVerifies")}</span>`}</div>
+    ${ck?`<span class="pill p-signed">${t("verified")}</span>`:""}</button></div>`;
   $("#body").innerHTML = tabs + list;
   $("#body").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ S.viewDay=+b.dataset.day; render(); });
   bindCells();
@@ -432,19 +438,19 @@ function renderDay(now, cur, isThisWeek){
 
 function renderWeek(now, cur, isThisWeek){
   const ws=S.weekStart, f=F();
-  let h = `<div class="gridwrap"><table class="grid"><thead><tr><th class="ts">Time slot</th>`;
-  for (let i=0;i<7;i++) h += `<th>${DAYS[i]}<small>${mdY(addDays(ws,i))}</small></th>`;
+  let h = `<div class="gridwrap"><table class="grid"><thead><tr><th class="ts">${t("timeSlot")}</th>`;
+  for (let i=0;i<7;i++) h += `<th>${dayName(i)}<small>${mdY(addDays(ws,i))}</small></th>`;
   h += `</tr></thead><tbody>`;
   for (let s=0;s<SLOTS;s++){
     h += `<tr><th class="ts">${fmtMin(f+s*SLOT_MIN)}</th>`;
     for (let d=0;d<7;d++){
       const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
-      const inner = sg ? `<span class="nm">${esc(sg.by)}</span><span class="tm">${fmtClock(sg.at)}${sg.late?" · late":""}</span>` : (st==="now"?`<span class="tm" style="color:#7a5d00;font-weight:700">Sign now</span>`:"");
-      h += `<td class="c-${st}${isThisWeek&&d===cur.day?" today-col":""}"><button data-d="${d}" data-s="${s}" ${st==="up"?"disabled":""}>${inner}</button></td>`;
+      const inner = sg ? `<span class="nm">${esc(sg.by)}</span><span class="tm">${fmtClock(sg.at)}${sg.late?" · "+t("lateCell"):""}</span>` : (st==="now"?`<span class="tm" style="color:#7a5d00;font-weight:700">${t("signNowCell")}</span>`:"");
+      h += `<td class="c-${st}${isThisWeek&&d===cur.day?" today-col":""}"><button data-d="${d}" data-s="${s}" data-m="${esc(t("missedCell"))}" ${st==="up"?"disabled":""}>${inner}</button></td>`;
     }
     h += `</tr>`;
   }
-  h += `<tr class="chk"><th class="ts">Checked by</th>`;
+  h += `<tr class="chk"><th class="ts">${t("checkedBy")}</th>`;
   for (let d=0;d<7;d++){ const ck=S.log.checks[`d${d}`];
     h += `<td><button data-check="${d}">${ck?`<span class="nm">${esc(ck.by)}</span><span class="tm">${md(new Date(ck.at))}</span>`:""}</button></td>`; }
   h += `</tr></tbody></table></div>`;
@@ -490,21 +496,21 @@ function renderOverview(){
     const cur=signs[sigKey(p.day,p.slot)];
     const cls = todayMiss ? "st-miss" : (!cur ? "st-now" : "");
     if (todayMiss) missN++; else if (!cur) dueN++; else okN++;
-    const pill = cur ? `<span class="pill p-signed">✓ ${fmtMin(f+p.slot*SLOT_MIN)}</span>` : `<span class="pill p-now">Due ${fmtMin(f+p.slot*SLOT_MIN)}</span>`;
+    const pill = cur ? `<span class="pill p-signed">✓ ${fmtMin(f+p.slot*SLOT_MIN)}</span>` : `<span class="pill p-now">${t("dueAt",{time:fmtMin(f+p.slot*SLOT_MIN)})}</span>`;
     const yd = p.day>0 ? p.day-1 : null;
     return `<button class="ov ${cls}" data-area="${esc(a.id)}"><div class="nm">${esc(a.name)} ${pill}</div>
-      <div class="ln">${cur?`Signed by <b>${esc(cur.by)}</b> at ${fmtClock(cur.at)}`:"Current slot not signed yet"}</div>
-      <div class="bars" title="Today's slots">${bars}</div>
-      <div class="ln">Today: <b>${todaySigned}</b> signed · <b style="color:${todayMiss?"var(--red)":"inherit"}">${todayMiss}</b> missed · Week missed: <b>${weekMiss}</b>
-      ${yd!=null?` · ${DAYS[yd]} ${checks["d"+yd]?"verified ✓":"<b style='color:var(--red)'>not verified</b>"}`:""}</div></button>`;
+      <div class="ln">${cur?t("signedByShort",{by:esc(cur.by), time:fmtClock(cur.at)}):t("notSignedYet")}</div>
+      <div class="bars" title="${esc(t("todaysSlots"))}">${bars}</div>
+      <div class="ln">${t("todayLabel")} <b>${todaySigned}</b> ${t("signedWord")} · <b style="color:${todayMiss?"var(--red)":"inherit"}">${todayMiss}</b> ${t("missedWord")} · ${t("weekMissed")} <b>${weekMiss}</b>
+      ${yd!=null?` · ${dayName(yd)} ${checks["d"+yd]?t("verifiedShort"):"<b style='color:var(--red)'>"+t("notVerified")+"</b>"}`:""}</div></button>`;
   });
   $("#body").innerHTML = `
     <div class="ovsum">
-      <div class="stat"><b>${okN}</b><span>On track</span></div>
-      <div class="stat"><b style="color:#9a7400">${dueN}</b><span>Due now</span></div>
-      <div class="stat miss"><b>${missN}</b><span>Missed today</span></div>
+      <div class="stat"><b>${okN}</b><span>${t("onTrack")}</span></div>
+      <div class="stat"><b style="color:#9a7400">${dueN}</b><span>${t("dueNowShort")}</span></div>
+      <div class="stat miss"><b>${missN}</b><span>${t("missedToday")}</span></div>
     </div>
-    <div class="ovgrid">${cards.join("")}</div>${loading?`<div class="loading">Loading…</div>`:""}`;
+    <div class="ovgrid">${cards.join("")}</div>${loading?`<div class="loading">${t("loading")}</div>`:""}`;
   $("#body").querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>setArea(b.dataset.area));
 }
 
@@ -512,7 +518,7 @@ function renderOverview(){
 function openSheet(html){ $("#sheet").innerHTML = html; $("#scrim").classList.add("show"); }
 function closeSheet(){ $("#scrim").classList.remove("show"); }
 $("#scrim").addEventListener("click", e=>{ if (e.target.id==="scrim") closeSheet(); });
-function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2200); }
+function toast(msg){ const tt=$("#toast"); tt.textContent=msg; tt.classList.add("show"); clearTimeout(tt._h); tt._h=setTimeout(()=>tt.classList.remove("show"),2200); }
 function showBanner(m){ const b=$("#banner"); b.textContent=m; b.classList.add("show"); }
 function hideBanner(){ $("#banner").classList.remove("show"); }
 
@@ -525,44 +531,45 @@ function rememberName(n){ const a=store.get("names",[]).filter(x=>x.toLowerCase(
 
 function slotCtx(d,s){
   const f=F(), st=slotStart(S.weekStart,d,s,f);
-  return `${esc(area().name)} · ${DAYS_LONG[d]} ${md(addDays(S.weekStart,d))} · ${fmtMin(f+s*SLOT_MIN)} slot${(f+s*SLOT_MIN)>=1440?` (${DAYS[st.getDay()===0?6:st.getDay()-1]} ${md(st)} early morning)`:""}`;
+  const early = (f+s*SLOT_MIN)>=1440;
+  return `${esc(area().name)} · ${dayLong(d)} ${md(addDays(S.weekStart,d))} · ${t("ctxSlot",{time:fmtMin(f+s*SLOT_MIN)})}${early?` (${t("earlyMorning",{day:dayName(st.getDay()===0?6:st.getDay()-1), date:md(st)})})`:""}`;
 }
 
 function openSign(d,s){
   const now=new Date(), st=slotState(S.weekStart,d,s,F(),null,now);
   if (st==="up") return;
-  openSheet(`<h2>Sign off cleaning</h2><div class="ctx">${slotCtx(d,s)}</div>
-    ${st==="miss"?`<div class="note">This slot has already passed. It will be saved as a <b>late sign-off</b> with the actual time (${fmtClock(+now)}).</div>`:""}
-    <div class="field"><label for="nm">Your name or initials</label>
-      <input id="nm" list="names" autocomplete="off" autocapitalize="words" maxlength="40" value="${esc(store.get("me",""))}" placeholder="e.g. Linda">
+  openSheet(`<h2>${t("signTitle")}</h2><div class="ctx">${slotCtx(d,s)}</div>
+    ${st==="miss"?`<div class="note">${t("passedNote",{time:fmtClock(+now)})}</div>`:""}
+    <div class="field"><label for="nm">${t("nameLabel")}</label>
+      <input id="nm" list="names" autocomplete="off" autocapitalize="words" maxlength="40" value="${esc(store.get("me",""))}" placeholder="${esc(t("namePh"))}">
       <datalist id="names">${knownNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
-    <div class="field"><label for="nt">Note (optional)</label>
-      <textarea id="nt" maxlength="200" placeholder="Anything the next shift should know"></textarea></div>
-    <div class="row"><button class="btn ghost" id="cx">Cancel</button><button class="btn primary" id="ok">✓ Sign off</button></div>`);
+    <div class="field"><label for="nt">${t("noteLabel")}</label>
+      <textarea id="nt" maxlength="200" placeholder="${esc(t("notePh"))}"></textarea></div>
+    <div class="row"><button class="btn ghost" id="cx">${t("cancel")}</button><button class="btn primary" id="ok">${t("signOk")}</button></div>`);
   const nm=$("#nm"); setTimeout(()=>{ if(!nm.value) nm.focus(); },50);
   $("#cx").onclick=closeSheet;
   $("#ok").onclick=async ()=>{
     const by=nm.value.trim().replace(/\s+/g," ");
     if (!by){ nm.focus(); nm.style.borderColor="var(--red)"; return; }
-    if (S.log.signs[sigKey(d,s)]){ closeSheet(); toast("Someone already signed this slot"); return; }
+    if (S.log.signs[sigKey(d,s)]){ closeSheet(); toast(t("alreadySigned")); return; }
     $("#ok").disabled=true;
     const at=Date.now(), late = at >= +slotStart(S.weekStart,d,s+1,F());
     const entry={ by, at, late }; const note=$("#nt").value.trim(); if (note) entry.note=note;
-    try{ await writeLog({ signs:{ [sigKey(d,s)]: entry } }); rememberName(by); closeSheet(); toast(`Signed off — thank you, ${by}!`); }
+    try{ await writeLog({ signs:{ [sigKey(d,s)]: entry } }); rememberName(by); closeSheet(); toast(t("thanks",{by})); }
     catch(e){ $("#ok").disabled=false; showBanner(dbErr(e)); }
   };
 }
 
 function openDetail(d,s){
   const sg=S.log.signs[sigKey(d,s)];
-  openSheet(`<h2>Signed off ✓</h2><div class="ctx">${slotCtx(d,s)}</div>
-    <dl class="kv"><dt>Signed by</dt><dd>${esc(sg.by)}</dd><dt>Time</dt><dd>${fmtStamp(sg.at)}${sg.late?' <span class="pill p-late">Late</span>':""}</dd>
-    ${sg.note?`<dt>Note</dt><dd>${esc(sg.note)}</dd>`:""}</dl>
-    <div class="row">${S.manager?`<button class="btn danger" id="rm">Remove</button>`:""}<button class="btn ghost" id="cx">Close</button></div>`);
+  openSheet(`<h2>${t("detailTitle")}</h2><div class="ctx">${slotCtx(d,s)}</div>
+    <dl class="kv"><dt>${t("signedBy")}</dt><dd>${esc(sg.by)}</dd><dt>${t("timeLabel")}</dt><dd>${fmtStamp(sg.at)}${sg.late?` <span class="pill p-late">${t("pLate")}</span>`:""}</dd>
+    ${sg.note?`<dt>${t("noteShort")}</dt><dd>${esc(sg.note)}</dd>`:""}</dl>
+    <div class="row">${S.manager?`<button class="btn danger" id="rm">${t("removeBtn")}</button>`:""}<button class="btn ghost" id="cx">${t("close")}</button></div>`);
   $("#cx").onclick=closeSheet;
   if (S.manager) $("#rm").onclick=async ()=>{
-    if (!confirm(`Remove ${sg.by}'s sign-off for this slot?`)) return;
-    try{ await updateDoc(doc(db,"logs",logId()), { [`signs.${sigKey(d,s)}`]: deleteField(), updatedAt:serverTimestamp() }); closeSheet(); toast("Sign-off removed"); }
+    if (!confirm(t("confirmRemove",{by:sg.by}))) return;
+    try{ await updateDoc(doc(db,"logs",logId()), { [`signs.${sigKey(d,s)}`]: deleteField(), updatedAt:serverTimestamp() }); closeSheet(); toast(t("removed")); }
     catch(e){ showBanner(dbErr(e)); }
   };
 }
@@ -570,7 +577,7 @@ function openDetail(d,s){
 function openCheck(d){
   const ck=S.log.checks[`d${d}`]; let missing=0; const now=new Date();
   for (let s=0;s<SLOTS;s++) if (slotState(S.weekStart,d,s,F(),S.log.signs[sigKey(d,s)],now)==="miss") missing++;
-  openSheet(`<h2>Manager check · ${DAYS_LONG[d]}</h2><div class="ctx">${esc(area().name)} · ${mdY(addDays(S.weekStart,d))}</div>
+  openSheet(`<h2>Manager check · ${EN_DAYS_LONG[d]}</h2><div class="ctx">${esc(area().name)} · ${mdY(addDays(S.weekStart,d))}</div>
     ${missing?`<div class="note">${missing} slot${missing>1?"s":""} missed this day.</div>`:""}
     ${ck?`<dl class="kv"><dt>Checked by</dt><dd>${esc(ck.by)}</dd><dt>When</dt><dd>${fmtStamp(ck.at)}</dd></dl>`:""}
     <div class="field"><label for="cn">Manager name</label><input id="cn" maxlength="40" value="${esc(ck?ck.by:store.get("mgrName",""))}"></div>
@@ -580,7 +587,7 @@ function openCheck(d){
   $("#ok").onclick=async()=>{
     const by=$("#cn").value.trim(); if(!by){ $("#cn").focus(); return; }
     store.set("mgrName",by);
-    try{ await writeLog({ checks:{ [`d${d}`]:{ by, at:Date.now() } } }); closeSheet(); toast(`${DAYS_LONG[d]} verified`); }
+    try{ await writeLog({ checks:{ [`d${d}`]:{ by, at:Date.now() } } }); closeSheet(); toast(`${EN_DAYS_LONG[d]} verified`); }
     catch(e){ showBanner(dbErr(e)); }
   };
 }
@@ -651,20 +658,20 @@ function openManager(){
     try{ await setDoc(cfgRef,{ pinHash:await sha(p), updatedAt:serverTimestamp() },{merge:true}); $("#np").value=""; toast("Passcode updated"); }catch(e){ showBanner(dbErr(e)); } };
 }
 
-/* ---------- print & export ---------- */
+/* ---------- print & export (in the chosen language) ---------- */
 function printWeek(){
   const ws=S.weekStart, f=F(), now=new Date();
-  let h=`<div class="ttl">CLEANING CHECKLIST – WEEKLY SIGN-OFF</div>
-    <div class="meta"><span><b>Week starting:</b> ${mdY(ws)}</span><span><b>Area:</b> ${esc(area().name)}</span><span><b>First time:</b> ${fmtMin(f)}</span></div>
-    <table><thead><tr><th class="ts">Time slot</th>${DAYS.map((d,i)=>`<th>${d}<br>${mdY(addDays(ws,i))}</th>`).join("")}</tr></thead><tbody>`;
+  let h=`<div class="ttl">${t("printTitle")}</div>
+    <div class="meta"><span><b>${t("weekStarting")}</b> ${mdY(ws)}</span><span><b>${t("areaWord")}</b> ${esc(area().name)}</span><span><b>${t("firstTimeWord")}</b> ${fmtMin(f)}</span></div>
+    <table><thead><tr><th class="ts">${t("timeSlot")}</th>${[0,1,2,3,4,5,6].map(i=>`<th>${dayName(i)}<br>${mdY(addDays(ws,i))}</th>`).join("")}</tr></thead><tbody>`;
   for (let s=0;s<SLOTS;s++){
     h+=`<tr><th class="ts">${fmtMin(f+s*SLOT_MIN)}</th>`;
     for (let d=0;d<7;d++){ const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
-      h+= sg?`<td><div class="nm">${esc(sg.by)}</div><div class="tm">${fmtClock(sg.at)}${sg.late?" (late)":""}</div></td>`:`<td class="${st==="miss"?"miss":""}"></td>`; }
+      h+= sg?`<td><div class="nm">${esc(sg.by)}</div><div class="tm">${fmtClock(sg.at)}${sg.late?` (${t("lateCell")})`:""}</div></td>`:`<td class="${st==="miss"?"miss":""}"></td>`; }
     h+=`</tr>`;
   }
-  h+=`<tr><th class="ts">Checked by</th>${[0,1,2,3,4,5,6].map(d=>{const c=S.log.checks[`d${d}`];return `<td>${c?`<div class="nm">${esc(c.by)}</div>`:""}</td>`}).join("")}</tr></tbody></table>
-    <div class="foot">Printed ${fmtStamp(Date.now())} from the digital Cleaning Log. Shaded cells = missed slot.</div>`;
+  h+=`<tr><th class="ts">${t("checkedBy")}</th>${[0,1,2,3,4,5,6].map(d=>{const c=S.log.checks[`d${d}`];return `<td>${c?`<div class="nm">${esc(c.by)}</div>`:""}</td>`}).join("")}</tr></tbody></table>
+    <div class="foot">${t("printFoot",{when:fmtStamp(Date.now())})}</div>`;
   $("#print").innerHTML=h; window.print();
 }
 function printQr(){
@@ -673,21 +680,21 @@ function printQr(){
   $("#print").innerHTML = S.areas.map(a=>{
     const url = `${base}?area=${encodeURIComponent(a.id)}`;
     const q = qrcode(0,"M"); q.addData(url); q.make();
-    return `<div class="qrpage"><h1>${esc(a.name)}</h1><h2>Cleaning Checklist – Sign-Off</h2>
+    return `<div class="qrpage"><h1>${esc(a.name)}</h1><h2>${t("qrHeading")}</h2>
       <div class="qr">${q.createSvgTag({cellSize:8, margin:2, scalable:true})}</div>
-      <p>Scan with your phone camera to sign off your cleaning slot.</p><div class="url">${esc(url)}</div></div>`;
+      <p>${t("qrText")}</p><div class="url">${esc(url)}</div></div>`;
   }).join("");
   window.print();
 }
 function exportCsv(){
   const ws=S.weekStart, f=F(), now=new Date();
-  const rows=[["Area","Week starting","Day","Date","Time slot","Status","Signed by","Signed at","Late","Note"]];
+  const rows=[CL_STR[CL_LANG].csvHead];
   for (let d=0;d<7;d++) for (let s=0;s<SLOTS;s++){
     const sg=S.log.signs[sigKey(d,s)], st=slotState(ws,d,s,f,sg,now);
-    rows.push([area().name, mdY(ws), DAYS_LONG[d], mdY(addDays(ws,d)), fmtMin(f+s*SLOT_MIN),
-      {signed:"Signed",miss:"Missed",now:"Due now",up:"Upcoming"}[st], sg?.by||"", sg?new Date(sg.at).toLocaleString():"", sg?.late?"Yes":"", sg?.note||""]);
+    rows.push([area().name, mdY(ws), dayLong(d), mdY(addDays(ws,d)), fmtMin(f+s*SLOT_MIN),
+      CL_STR[CL_LANG].csvStatus[st]||"", sg?.by||"", sg?new Date(sg.at).toLocaleString(clLocale()):"", sg?.late?t("csvLate"):"", sg?.note||""]);
   }
-  for (let d=0;d<7;d++){ const c=S.log.checks[`d${d}`]; rows.push([area().name, mdY(ws), DAYS_LONG[d], mdY(addDays(ws,d)), "Checked by", c?"Verified":"", c?.by||"", c?new Date(c.at).toLocaleString():"", "", ""]); }
+  for (let d=0;d<7;d++){ const c=S.log.checks[`d${d}`]; rows.push([area().name, mdY(ws), dayLong(d), mdY(addDays(ws,d)), t("checkedBy"), c?t("csvVerified"):"", c?.by||"", c?new Date(c.at).toLocaleString(clLocale()):"", "", ""]); }
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
   a.download=`Cleaning-Log_${area().id}_${ymd(ws)}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
@@ -696,6 +703,9 @@ function exportCsv(){
 /* keep "due now" fresh */
 setInterval(render, 30000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
+
+// Apply the saved language to fixed labels and the picker
+applyStatic();
 
 // expose pure helpers for tests
 window.__cl = { position, slotStart, slotState, fmtMin, opDate, mondayOf };
