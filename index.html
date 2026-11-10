@@ -211,6 +211,7 @@
     </div>
     <button class="linkbtn" id="thisWk" data-t="thisWeek" style="display:none">This week</button>
     <button class="btn ghost sm" id="ovBtn" data-t="allAreas">All areas</button>
+    <button class="btn ghost sm" id="tutBtn" data-t="tutorial">Tutorial</button>
   </div>
 
   <div id="nowCard"></div>
@@ -352,6 +353,10 @@ $("#ovBtn").onclick = () => { if (S.overview){ S.overview=false; unsubOverview()
 $("#viewBtn").onclick = () => { S.mode = S.mode==="week"?"day":"week"; store.set("mode",S.mode); render(); };
 $("#mgrBtn").onclick = () => S.manager ? openManager() : openUnlock(openManager);
 $("#langSel").onchange = e => { setLang(e.target.value); render(); };
+$("#tutBtn").onclick = () => openSheet(`<h2>${t("tutorialTitle")}</h2><div class="ctx">${t("tutorialCtx")}</div>
+  <video controls playsinline preload="metadata" style="width:100%;border-radius:12px;background:#000" src="videos/cleaning-log-${CL_LANG}-9x16.mp4"></video>
+  <div class="row" style="margin-top:12px"><button class="btn ghost" id="cx">${t("close")}</button></div>`);
+$("#sheet").addEventListener("click", e => { if (e.target.id==="cx") closeSheet(); });
 
 function renderAreaSel(){
   $("#areaSel").innerHTML = S.areas.map(a=>`<option value="${esc(a.id)}"${a.id===S.areaId?" selected":""}>${esc(a.name)}</option>`).join("");

@@ -2,6 +2,7 @@
 // Staff-facing text is translated here. Manager tools stay in English.
 const CL_STR = {
   en: {
+    tutorial: "Tutorial", tutorialTitle: "How to use the Cleaning Log", tutorialCtx: "A short video in your language.",
     days: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
     daysLong: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
     title: "Cleaning Checklist", subtitle: "Weekly Sign-Off",
@@ -40,6 +41,7 @@ const CL_STR = {
     csvStatus: {signed:"Signed", miss:"Missed", now:"Due now", up:"Upcoming"}, csvVerified: "Verified", csvLate: "Yes"
   },
   es: {
+    tutorial: "Tutorial", tutorialTitle: "Cómo usar el Registro de Limpieza", tutorialCtx: "Un video corto en su idioma.",
     days: ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"],
     daysLong: ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"],
     title: "Lista de limpieza", subtitle: "Firma semanal",
@@ -78,6 +80,7 @@ const CL_STR = {
     csvStatus: {signed:"Firmado", miss:"Pendiente", now:"Le toca", up:"Próximo"}, csvVerified: "Verificado", csvLate: "Sí"
   },
   tl: {
+    tutorial: "Tutorial", tutorialTitle: "Paano gamitin ang Cleaning Log", tutorialCtx: "Maikling video sa inyong wika.",
     days: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
     daysLong: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
     title: "Cleaning Checklist", subtitle: "Weekly Sign-Off",
